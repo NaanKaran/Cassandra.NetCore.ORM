@@ -67,10 +67,10 @@ namespace Cassandra.NetCore.ORM.Helpers
             string queryString = null, memberName = null;
             var operand = GetOperand(binaryExpression.NodeType);
 
-            if (binaryExpression.Left is BinaryExpression && binaryExpression.Right is BinaryExpression)
+            if (binaryExpression.Left is BinaryExpression expressionLeft && binaryExpression.Right is BinaryExpression expressionRight)
             {
-                var left = EvaluateBinaryExpression((BinaryExpression)binaryExpression.Left);
-                var right = EvaluateBinaryExpression((BinaryExpression)binaryExpression.Right);
+                var left = EvaluateBinaryExpression(expressionLeft);
+                var right = EvaluateBinaryExpression(expressionRight);
                 queryString = $"{left.Statment} {operand} {right.Statment}";
                 return new Query(queryString, left.Values.Concat(right.Values).ToArray());
             }

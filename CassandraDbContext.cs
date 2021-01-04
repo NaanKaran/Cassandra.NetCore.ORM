@@ -12,9 +12,10 @@ using Mapper = Cassandra.Mapping.Mapper;
 
 namespace Cassandra.NetCore.ORM
 {
-    public class CassandraDbContext : IDisposable
+    public class CassandraDbContext : IDisposable, ICassandraDbContext
     {
         private ISession _session;
+        private IMapper _mapper;
         private static Cluster _cluster;
         private int _currentBatchSize = 0;
         private object _batchLock = new object();
@@ -38,8 +39,8 @@ namespace Cassandra.NetCore.ORM
                 .WithSSL(options)
                 .Build();
             CreateKeySpace(keySpaceName).Wait();
-            _session =  _cluster.ConnectAsync(keySpaceName).Result;
-
+            _session = _cluster.ConnectAsync(keySpaceName).Result;
+             _mapper = new Mapper(_session);
         }
         public static bool ValidateServerCertificate
         (
@@ -73,13 +74,26 @@ namespace Cassandra.NetCore.ORM
             _session = await _cluster.ConnectAsync();
             await _session.ExecuteAsync(new SimpleStatement($"CREATE KEYSPACE IF NOT EXISTS {keySpace} WITH REPLICATION = {{ 'class' : 'NetworkTopologyStrategy', 'datacenter1' : 1 }};"));
         }
+        public void Insert<T>(T data)
+        {
+            try
+            {
+
+                 _mapper.Insert<T>(data);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
 
         public async Task InsertAsync<T>(T data)
         {
             try
             {
-                IMapper mapper = new Mapper(_session);
-                await mapper.InsertAsync<T>(data);
+            
+                await _mapper.InsertAsync<T>(data);
             }
             catch (Exception e)
             {
@@ -87,12 +101,11 @@ namespace Cassandra.NetCore.ORM
                 throw;
             }
         }
-        public  void InsertIfNotExists<T>(T data)
+        public void InsertIfNotExists<T>(T data)
         {
             try
             {
-                IMapper mapper = new Mapper(_session);
-                mapper.InsertIfNotExists<T>(data);
+                _mapper.InsertIfNotExists<T>(data);
             }
             catch (Exception e)
             {
@@ -102,13 +115,11 @@ namespace Cassandra.NetCore.ORM
         }
 
 
-        public async Task<T> InsertIfNotExistsAsync<T>(T data)
+        public async Task InsertIfNotExistsAsync<T>(T data)
         {
             try
             {
-                IMapper mapper = new Mapper(_session);
-                await mapper.InsertIfNotExistsAsync<T>(data);
-                return data;
+                await _mapper.InsertIfNotExistsAsync<T>(data);
             }
             catch (Exception e)
             {
@@ -117,19 +128,36 @@ namespace Cassandra.NetCore.ORM
             }
         }
 
-        public IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate)
+        //public async Task UpdateAsync<T>(Expression<Func<T,T>> valueToUpdate, Expression<Func<T, bool>> whereClause)
+        //{
+        //    try
+        //    {
+
+        //        await _mapper.UpdateAsync<T>("0");
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Console.WriteLine(e);
+        //        throw;
+        //    }
+        //}
+
+
+        public IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null)
         {
 
             try
             {
                 var tableName = typeof(T).ExtractTableName<T>();
-
-                _session = _cluster.Connect(tableName);
-                IMapper mapper = new Mapper(_session);
+                var selectQuery = $"select * from {tableName}";
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
-                var selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
 
-                var output = mapper.Fetch<T>(selectQuery);
+                if (predicate != null)
+                {
+                    selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
+                }
+
+                var output = _mapper.Fetch<T>(selectQuery, queryStatement?.Values);
 
                 return output;
             }
@@ -145,16 +173,15 @@ namespace Cassandra.NetCore.ORM
             try
             {
                 var tableName = typeof(T).ExtractTableName<T>();
-                IMapper mapper = new Mapper(_session);
                 var selectQuery = $"select * from {tableName}";
+
+                var queryStatement = QueryBuilder.EvaluateQuery(predicate);
 
                 if (predicate != null)
                 {
-                    var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                     selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
                 }
-               
-                var output = await mapper.FetchAsync<T>(selectQuery);
+                var output = await _mapper.FetchAsync<T>(selectQuery, queryStatement?.Values);
 
                 return output;
             }
@@ -165,19 +192,49 @@ namespace Cassandra.NetCore.ORM
             }
         }
 
-        public double Average<T, TNumericModel>(Expression<Func<T, bool>> predicate, Expression<Func<T, TNumericModel>> propertyExpression)
+        public T FirstOrDefault<T>(Expression<Func<T, bool>> predicate = null)
+        {
+            var tableName = typeof(T).ExtractTableName<T>();
+            var selectQuery = $"select * from {tableName}";
+            var queryStatement = QueryBuilder.EvaluateQuery(predicate);
+
+            if (predicate != null)
+            {
+                selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
+            }
+            return _mapper.FirstOrDefault<T>(selectQuery, queryStatement?.Values);
+        }
+
+        public async Task<T> FirstOrDefaultAsync<T>(Expression<Func<T, bool>> predicate = null)
+        {
+            var tableName = typeof(T).ExtractTableName<T>();
+            var selectQuery = $"select * from {tableName}";
+            var queryStatement = QueryBuilder.EvaluateQuery(predicate);
+
+            if (predicate != null)
+            {
+                selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
+            }
+            return await _mapper.FirstOrDefaultAsync<T>(selectQuery, queryStatement?.Values);
+        }
+
+        public double Average<T, TNumericModel>(Expression<Func<T, TNumericModel>> propertyExpression, Expression<Func<T, bool>> predicate = null)
         {
             try
             {
                 var columnName = QueryBuilder.EvaluatePropertyName(propertyExpression);
 
-                var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select avg({columnName}) from {tableName} where {queryStatement.Statment}";
 
-                var statement = new SimpleStatement(selectQuery, queryStatement.Values);
+                var selectQuery = $"select avg({columnName}) from {tableName}";
+                var statement = new SimpleStatement(selectQuery);
+                if (predicate != null)
+                {
+                    var queryStatement = QueryBuilder.EvaluateQuery(predicate);
+                    selectQuery = $"select avg({columnName}) from {tableName} where {queryStatement.Statment}";
+                    statement = new SimpleStatement(selectQuery, queryStatement.Values);
+                }
                 var rows = _session.Execute(statement);
-
                 var avg = Convert.ToDouble(rows.First()[0]);
 
                 return avg;
@@ -188,6 +245,7 @@ namespace Cassandra.NetCore.ORM
                 throw;
             }
         }
+
 
         public async Task<double> AverageAsync<T, TNumericModel>(Expression<Func<T, bool>> predicate, Expression<Func<T, TNumericModel>> propertyExpression)
         {
@@ -326,7 +384,7 @@ namespace Cassandra.NetCore.ORM
                 Console.WriteLine(e);
                 throw;
             }
-        }  
+        }
         public async Task<double> MaxAsync<T, TNumericModel>(Expression<Func<T, bool>> predicate, Expression<Func<T, TNumericModel>> propertyExpression)
         {
             try
@@ -357,10 +415,12 @@ namespace Cassandra.NetCore.ORM
             return Select(predicate).SingleOrDefault();
         }
 
-        public T FirstOrDefault<T>(Expression<Func<T, bool>> predicate)
-        {
-            return Select(predicate).FirstOrDefault();
-        }
+        //public T SingleOrDefaultAsync<T>(Expression<Func<T, bool>> predicate)
+        //{
+        //    return SelectAsync(predicate).SingleOrDefault();
+        //}
+
+
 
         public void AddOrUpdate<T>(T entity)
         {
@@ -386,6 +446,30 @@ namespace Cassandra.NetCore.ORM
             }
         }
 
+        public async Task AddOrUpdateAsync<T>(T entity)
+        {
+            var insertStatment = CreateAddStatement(entity);
+
+            if (UseBatching)
+            {
+                lock (_batchLock)
+                {
+                    _currentBatch.Add(insertStatment);
+                    ++_currentBatchSize;
+                    if (_currentBatchSize == BatchSize)
+                    {
+                        _session.Execute(_currentBatch); // due to page lock we can't able to use async method here.
+                        _currentBatchSize = 0;
+                        _currentBatch = new BatchStatement();
+                    }
+                }
+            }
+            else
+            {
+                await _session.ExecuteAsync(insertStatment);
+            }
+        }
+
         private Statement CreateAddStatement<T>(T entity)
         {
             var tableName = typeof(T).ExtractTableName<T>();
@@ -396,6 +480,21 @@ namespace Cassandra.NetCore.ORM
             var parametersSignals = properties.Select(p => "?").ToArray();
             var propertiesValues = properties.Select(p => p.GetValue(entity)).ToArray();
             var insertCql = $"insert into {tableName}({string.Join(",", properiesNames)}) values ({string.Join(",", parametersSignals)})";
+            var insertStatment = new SimpleStatement(insertCql, propertiesValues);
+
+            return insertStatment;
+        }
+
+        private Statement CreateUpdateStatement<T>(T entity)
+        {
+            var tableName = typeof(T).ExtractTableName<T>();
+
+            // We are interested only in the properties we are not ignoring
+            var properties = entity.GetType().GetCassandraRelevantProperties();
+            var properiesNames = properties.Select(p => p.GetColumnNameMapping()).ToArray();
+            var parametersSignals = properties.Select(p => "?").ToArray();
+            var propertiesValues = properties.Select(p => p.GetValue(entity)).ToArray();
+            var insertCql = $"SET {string.Join("= ?", properiesNames)}";
             var insertStatment = new SimpleStatement(insertCql, propertiesValues);
 
             return insertStatment;
