@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using Cassandra.NetCore.ORM.Attributes;
 using Cassandra.NetCore.ORM.Exceptions;
@@ -19,10 +20,10 @@ namespace Cassandra.NetCore.ORM.Helpers
 
         public static PropertyInfo[] GetCassandraRelevantProperties(this Type type)
         {
+
             var properties = type.GetProperties()
-                                 .Where(p => p.GetCustomAttributes(false)
-                                              .OfType<CassandraIgnoreAttribute>()
-                                              .Count() == 0);
+                                 .Where(p => !p.GetCustomAttributes(false)
+                                     .OfType<CassandraIgnoreAttribute>().Any());
 
             return properties.ToArray();
         }
@@ -34,6 +35,39 @@ namespace Cassandra.NetCore.ORM.Helpers
                 return cassandraPropertyAttribute.AttributeName;
 
             return property.Name;
+        }
+
+
+        public static string GetColumnNameAndPrimaryKeyMapping(this PropertyInfo property)
+        {
+            var cassandraPropertyAttribute = property.GetCustomAttribute<PrimaryKey>();
+            if (cassandraPropertyAttribute != null)
+            {
+                return property.Name + " " + GetOperand(property.PropertyType) + " PRIMARY KEY";
+            }
+
+            return property.Name + " " + GetOperand(property.PropertyType);
+        }
+
+        private static string GetOperand(Type nodeType)
+        {
+
+            var typeCode = Type.GetTypeCode(nodeType);
+            switch (typeCode)
+            {
+               
+                case TypeCode.Int16:
+                case TypeCode.Int32:
+                case TypeCode.Int64:
+                case TypeCode.UInt16:
+                case TypeCode.UInt32:
+                case TypeCode.UInt64:
+                    return "int";
+                case TypeCode.String:
+                    return "text";
+                default:
+                    throw new NotSupportedException($"Node type {nodeType} is a valid operand");
+            }
         }
     }
 }

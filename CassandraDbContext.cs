@@ -20,7 +20,7 @@ namespace Cassandra.NetCore.ORM
         private int _currentBatchSize = 0;
         private object _batchLock = new object();
         private BatchStatement _currentBatch = new BatchStatement();
-
+        private string _keySpaceName;
         public int BatchSize { get; set; } = 50;
         public bool UseBatching { get; set; } = false;
 
@@ -41,6 +41,8 @@ namespace Cassandra.NetCore.ORM
             CreateKeySpace(keySpaceName).Wait();
             _session = _cluster.ConnectAsync(keySpaceName).Result;
              _mapper = new Mapper(_session);
+
+             _keySpaceName = keySpaceName;
         }
         public static bool ValidateServerCertificate
         (
@@ -476,28 +478,57 @@ namespace Cassandra.NetCore.ORM
 
             // We are interested only in the properties we are not ignoring
             var properties = entity.GetType().GetCassandraRelevantProperties();
-            var properiesNames = properties.Select(p => p.GetColumnNameMapping()).ToArray();
+            var propertiesNames = properties.Select(p => p.GetColumnNameMapping()).ToArray();
             var parametersSignals = properties.Select(p => "?").ToArray();
             var propertiesValues = properties.Select(p => p.GetValue(entity)).ToArray();
-            var insertCql = $"insert into {tableName}({string.Join(",", properiesNames)}) values ({string.Join(",", parametersSignals)})";
+            var insertCql = $"insert into {tableName}({string.Join(",", propertiesNames)}) values ({string.Join(",", parametersSignals)})";
             var insertStatment = new SimpleStatement(insertCql, propertiesValues);
 
             return insertStatment;
         }
 
-        private Statement CreateUpdateStatement<T>(T entity)
+        private SimpleStatement CreateClusterStatement<T>(T entity)
         {
-            var tableName = typeof(T).ExtractTableName<T>();
+            try
+            {
+                var tableName = typeof(T).ExtractTableName<T>();
 
-            // We are interested only in the properties we are not ignoring
-            var properties = entity.GetType().GetCassandraRelevantProperties();
-            var properiesNames = properties.Select(p => p.GetColumnNameMapping()).ToArray();
-            var parametersSignals = properties.Select(p => "?").ToArray();
-            var propertiesValues = properties.Select(p => p.GetValue(entity)).ToArray();
-            var insertCql = $"SET {string.Join("= ?", properiesNames)}";
-            var insertStatment = new SimpleStatement(insertCql, propertiesValues);
+                // We are interested only in the properties we are not ignoring
+                var properties = entity.GetType().GetCassandraRelevantProperties();
+                var propertiesNames = properties.Select(p => p.GetColumnNameAndPrimaryKeyMapping()).ToArray();
 
-            return insertStatment;
+                var createCql = $"CREATE TABLE IF NOT EXISTS {_keySpaceName}.{tableName} ({string.Join(",", propertiesNames)})";
+
+
+                var insertStatment = new SimpleStatement(createCql);
+
+                return insertStatment;
+
+               
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
+        }
+
+        public async Task CreateClusterAsync<T>() where T : class, new() 
+        {
+            try
+            {
+                var query = CreateClusterStatement(new T());
+                await _session.ExecuteAsync(query);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+          
+            
         }
     }
 }
