@@ -156,7 +156,7 @@ namespace Cassandra.NetCore.ORM
 
                 if (predicate != null)
                 {
-                    selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
+                    selectQuery = $"select * from {tableName} where {queryStatement.Statement}";
                 }
 
                 var output = _mapper.Fetch<T>(selectQuery, queryStatement?.Values);
@@ -181,7 +181,7 @@ namespace Cassandra.NetCore.ORM
 
                 if (predicate != null)
                 {
-                    selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
+                    selectQuery = $"select * from {tableName} where {queryStatement.Statement}";
                 }
                 var output = await _mapper.FetchAsync<T>(selectQuery, queryStatement?.Values);
 
@@ -202,7 +202,7 @@ namespace Cassandra.NetCore.ORM
 
             if (predicate != null)
             {
-                selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
+                selectQuery = $"select * from {tableName} where {queryStatement.Statement}";
             }
             return _mapper.FirstOrDefault<T>(selectQuery, queryStatement?.Values);
         }
@@ -215,7 +215,7 @@ namespace Cassandra.NetCore.ORM
 
             if (predicate != null)
             {
-                selectQuery = $"select * from {tableName} where {queryStatement.Statment}";
+                selectQuery = $"select * from {tableName} where {queryStatement.Statement}";
             }
             return await _mapper.FirstOrDefaultAsync<T>(selectQuery, queryStatement?.Values);
         }
@@ -233,7 +233,7 @@ namespace Cassandra.NetCore.ORM
                 if (predicate != null)
                 {
                     var queryStatement = QueryBuilder.EvaluateQuery(predicate);
-                    selectQuery = $"select avg({columnName}) from {tableName} where {queryStatement.Statment}";
+                    selectQuery = $"select avg({columnName}) from {tableName} where {queryStatement.Statement}";
                     statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 }
                 var rows = _session.Execute(statement);
@@ -257,7 +257,7 @@ namespace Cassandra.NetCore.ORM
 
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select avg({columnName}) from {tableName} where {queryStatement.Statment}";
+                var selectQuery = $"select avg({columnName}) from {tableName} where {queryStatement.Statement}";
 
                 var statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 var rows = await _session.ExecuteAsync(statement);
@@ -281,7 +281,7 @@ namespace Cassandra.NetCore.ORM
 
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select sum({columnName}) from {tableName} where {queryStatement.Statment}";
+                var selectQuery = $"select sum({columnName}) from {tableName} where {queryStatement.Statement}";
 
                 var statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 var rows = _session.Execute(statement);
@@ -305,7 +305,7 @@ namespace Cassandra.NetCore.ORM
 
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select sum({columnName}) from {tableName} where {queryStatement.Statment}";
+                var selectQuery = $"select sum({columnName}) from {tableName} where {queryStatement.Statement}";
 
                 var statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 var rows = await _session.ExecuteAsync(statement);
@@ -329,7 +329,7 @@ namespace Cassandra.NetCore.ORM
 
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select min({columnName}) from {tableName} where {queryStatement.Statment}";
+                var selectQuery = $"select min({columnName}) from {tableName} where {queryStatement.Statement}";
 
                 var statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 var rows = _session.Execute(statement);
@@ -349,7 +349,7 @@ namespace Cassandra.NetCore.ORM
                 var columnName = QueryBuilder.EvaluatePropertyName(propertyExpression);
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select min({columnName}) from {tableName} where {queryStatement.Statment}";
+                var selectQuery = $"select min({columnName}) from {tableName} where {queryStatement.Statement}";
 
                 var statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 var rows = await _session.ExecuteAsync(statement);
@@ -372,7 +372,7 @@ namespace Cassandra.NetCore.ORM
 
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select max({columnName}) from {tableName} where {queryStatement.Statment}";
+                var selectQuery = $"select max({columnName}) from {tableName} where {queryStatement.Statement}";
 
                 var statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 var rows = _session.Execute(statement);
@@ -395,7 +395,7 @@ namespace Cassandra.NetCore.ORM
 
                 var queryStatement = QueryBuilder.EvaluateQuery(predicate);
                 var tableName = typeof(T).ExtractTableName<T>();
-                var selectQuery = $"select max({columnName}) from {tableName} where {queryStatement.Statment}";
+                var selectQuery = $"select max({columnName}) from {tableName} where {queryStatement.Statement}";
 
                 var statement = new SimpleStatement(selectQuery, queryStatement.Values);
                 var rows = await _session.ExecuteAsync(statement);

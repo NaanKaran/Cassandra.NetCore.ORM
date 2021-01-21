@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "WlH66QSmpGfuFDWRH+UXIutCJM4wBdbPjTPWFR+Ca09cy7cFbRCVRysaQNJ+tZ+LoUk4+Ep+W4AzSVn2tg+wVQ==",
+  "dgSpecHash": "l73MgPoq0CSZplKSJHY7CUXOe79S49M72L9+pz5z3Dryud6W2oKA8y1KXeWVFSUFHGakFoioJNz1i0P4W0BTSA==",
   "success": true,
   "projectFilePath": "D:\\Code\\WorkSamples\\Cassandra.NetCore\\Cassandra.NetCore.ORM\\Cassandra.NetCore.ORM.csproj",
   "expectedPackageFiles": [

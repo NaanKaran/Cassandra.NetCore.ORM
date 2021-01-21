@@ -6,13 +6,13 @@
         {
         }
 
-        public Query(string statment, object[] values)
+        public Query(string statement, object[] values)
         {
-            Statment = statment;
+            Statement = statement;
             Values = values;
         }
 
-        public string Statment { get; set; }
+        public string Statement { get; set; }
         public object[] Values { get; set; }
     }
 }

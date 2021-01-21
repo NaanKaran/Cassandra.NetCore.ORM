@@ -71,7 +71,7 @@ namespace Cassandra.NetCore.ORM.Helpers
             {
                 var left = EvaluateBinaryExpression(expressionLeft);
                 var right = EvaluateBinaryExpression(expressionRight);
-                queryString = $"{left.Statment} {operand} {right.Statment}";
+                queryString = $"{left.Statement} {operand} {right.Statement}";
                 return new Query(queryString, left.Values.Concat(right.Values).ToArray());
             }
             else
